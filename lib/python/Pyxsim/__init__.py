@@ -1,4 +1,4 @@
-# Copyright 2016-2022 XMOS LIMITED.
+# Copyright 2016-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 """
 Pyxsim pytest framework
@@ -17,6 +17,7 @@ from Pyxsim.xmostest_subprocess import call_get_output
 from . import pyxsim
 from Pyxsim.xe import Xe
 
+
 # This function is called automatically by the runners
 def _build(
     xe_path,
@@ -26,23 +27,21 @@ def _build(
     clean_only=False,
     build_options=[],
     cmake=False,
-    binary_child=None,
-    silent=False
 ):
-    if cmake and not binary_child:
-        msg = "ERROR: A name must be provided for the " +\
-                            "desired subdirectory of /bin/ for this build!"
+    # Don't support build_config with cmake; extract the config name from xe_path
+    if cmake and build_config is not None:
+        msg = "ERROR: build_config option not supported with cmake"
         sys.stderr.write(msg)
         return (False, msg)
 
     # Work out the Makefile path
     path = None
     if cmake:
-        # Set cmakelists_path to the root of the test directory. We're assuming this
-        # is the parent of the directory named "bin".
-        splitpath = Path(xe_path).resolve().parts
-        bindex = splitpath.index("bin")
-        path = Path(*splitpath[:bindex])
+        path = Path.cwd() / "build"
+        if not path.exists():
+            msg = f"ERROR: cmake build directory doesn't exist at {path}"
+            sys.stderr.write(msg)
+            return (False, msg)
     else:
         m = re.match("(.*)/bin/(.*)", xe_path)
         if m:
@@ -63,58 +62,40 @@ def _build(
         for key in env:
             my_env[key] = str(env[key])
 
-    # The build process differs between cmake and xmake; cater for both
+    cmd = ["xmake"]
+    if clean_only:
+        cmd += ["clean"]
+        do_clean = False
+
+    if do_clean:
+        call_get_output(["xmake", "clean"], cwd=path, env=my_env)
+
     if cmake:
-        make_cmd = ["cmake", "-B", f"bin/{binary_child}"]
-        build_cmd = ["cmake", "--build", f"bin/{binary_child}"]
-
-        if clean_only:
-            build_cmd += ["--target", "clean"]
-            do_clean = False
-        if do_clean:
-            build_cmd += ["--clean-first"]
-
-        if silent:
-            output_args = {"stderr":subprocess.DEVNULL, "stdout":subprocess.DEVNULL}
-        else:
-            output_args = {"stderr":subprocess.STDOUT}
-
-        subprocess.run(make_cmd, cwd=path, env=my_env, **output_args)
-        subprocess.run(build_cmd, cwd=path, env=my_env, **output_args)
-
-        return (True, "Subprocesses run")
+        if not clean_only:
+            cmd += [Path(xe_path).stem]
     else:
-        if clean_only:
-            cmd = ["xmake", "clean"]
-            do_clean = False
-        else:
-            cmd = ["xmake", "all"]
-
-        if do_clean:
-            call_get_output(["xmake", "clean"], cwd=path, env=my_env)
-
         if build_config is not None:
             cmd += ["CONFIG=%s" % build_config]
 
-        cmd += build_options
+    cmd += build_options
 
-        output = call_get_output(cmd, cwd=path, env=my_env, merge_out_and_err=True)
+    output = call_get_output(cmd, cwd=path, env=my_env, merge_out_and_err=True)
 
-        success = True
+    success = True
+    for x in output:
+        s = str(x, "utf8")
+        if s.find("Error") != -1:
+            success = False
+        if re.match(r"xmake: \*\*\* .* Stop.", s) is not None:
+            success = False
+
+    if not success:
+        sys.stderr.write("ERROR: build failed.\n")
         for x in output:
             s = str(x, "utf8")
-            if s.find("Error") != -1:
-                success = False
-            if re.match(r"xmake: \*\*\* .* Stop.", s) is not None:
-                success = False
+            sys.stderr.write(s)
 
-        if not success:
-            sys.stderr.write("ERROR: build failed.\n")
-            for x in output:
-                s = str(x, "utf8")
-                sys.stderr.write(s)
-
-        return (success, output)
+    return (success, output)
 
 
 def run_on_simulator_(xe, tester=None, simthreads=[], **kwargs):
@@ -126,9 +107,7 @@ def run_on_simulator_(xe, tester=None, simthreads=[], **kwargs):
         build_env = kwargs.pop("build_env", {})
         build_config = kwargs.pop("build_config", None)
         do_clean = kwargs.pop("clean_before_build", False)
-        binary_child = kwargs.pop("binary_child", None)
         clean_only = kwargs.pop("clean_only", False)
-        silent = kwargs.pop("silent", None)
         cmake = kwargs.pop("cmake", None)
         build_options = kwargs.pop("build_options", [])
 
@@ -139,8 +118,6 @@ def run_on_simulator_(xe, tester=None, simthreads=[], **kwargs):
                                              clean_only=clean_only,
                                              build_options=build_options,
                                              cmake=cmake,
-                                             binary_child=binary_child,
-                                             silent=silent,
                                              )
 
         if not build_success:

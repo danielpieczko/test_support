@@ -1,4 +1,4 @@
-# Copyright 2020-2022 XMOS LIMITED.
+# Copyright 2020-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 import setuptools
 
@@ -13,8 +13,4 @@ setuptools.setup(
     name="test_support",
     package_dir={"": "lib/python"},
     packages=setuptools.find_packages(),
-    install_requires=[
-        "black",
-    ],
-    dependency_links=[],
 )
