@@ -1,10 +1,10 @@
-@Library('xmos_jenkins_shared_library@v0.16.4') _
+@Library('xmos_jenkins_shared_library@v0.33.0') _
 
 getApproval()
 
 pipeline {
   agent {
-    label 'x86_64 && brew'
+    label 'x86_64 && linux'
   }
   environment {
     REPO = 'test_support'
