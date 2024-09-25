@@ -1,6 +1,11 @@
 test_support Change Log
 =======================
 
+UNRELEASED
+----------
+
+  * CHANGED:   Pyxsim CMake build uses XCommon CMake
+
 2.0.0
 -----
 
