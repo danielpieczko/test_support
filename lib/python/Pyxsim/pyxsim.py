@@ -280,7 +280,8 @@ class Xsi:
 
     def clock(self):
         status = xsi_lib.xsi_clock(self.xsim)
-        self._time += self._time_step
+        #self._time += self._time_step
+        self._time = (self._time*self.xe.freq + 1000000000.0) / self.xe.freq
         if XsiStatus.is_valid(status):
             for plugin in self._plugins:
                 plugin.clock(self)
