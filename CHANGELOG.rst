@@ -5,6 +5,8 @@ UNRELEASED
 ----------
 
   * CHANGED:   Pyxsim CMake build uses XCommon CMake
+  * CHANGED:   The way time is incremented by time_step for better floating point precision
+  * ADDED:     Methods in Xsi class for getting the xsim tick frequency
 
 2.0.0
 -----

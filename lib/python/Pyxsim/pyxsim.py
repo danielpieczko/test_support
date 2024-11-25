@@ -1,4 +1,4 @@
-# Copyright 2016-2023 XMOS LIMITED.
+# Copyright 2016-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 from ctypes import (
@@ -242,6 +242,28 @@ class SimThreadImpl(threading.Thread):
 
 
 class Xsi:
+    @staticmethod
+    def get_xsi_tick_freq_hz():
+        """
+        Returns the tick frequency corresponding to the time resolution used in xsim
+        """
+        xsi_tick_freq_hz = float(1e15) # Time resolution used within xsim (1 femtosecond)
+        return xsi_tick_freq_hz
+
+    @staticmethod
+    def get_xsi_tick_freq_khz():
+        """
+        Returns the tick frequency used in xsim in KHz
+        """
+        return Xsi.get_xsi_tick_freq_hz()/1000.0
+
+    @staticmethod
+    def get_xsi_tick_freq_mhz():
+        """
+        Returns the tick frequency used in xsim in MHz
+        """
+        return Xsi.get_xsi_tick_freq_hz()/1000000.0
+
     def __init__(self, xe_path=None, simargs=[], appargs=[]):
         self.xsim = c_void_p()
         self.xe_path = xe_path
@@ -254,7 +276,7 @@ class Xsi:
         self._simthreads = []
         self._time = 0
         self.xe = Xe(self.xe_path)
-        self._time_step = 1000000000.0 / self.xe.freq  # time-step in fs
+        self._time_step = Xsi.get_xsi_tick_freq_mhz() / self.xe.freq  # time-step in fs
 
     def register_plugin(self, plugin):
         self._plugins.append(plugin)
@@ -280,7 +302,8 @@ class Xsi:
 
     def clock(self):
         status = xsi_lib.xsi_clock(self.xsim)
-        self._time += self._time_step
+        # time + (time_resolution/xe_freq_hz) = (time*xe_freq_hz + time_resolution)/xe_freq_hz
+        self._time = ((self._time * self.xe.freq) + (Xsi.get_xsi_tick_freq_mhz())) / self.xe.freq
         if XsiStatus.is_valid(status):
             for plugin in self._plugins:
                 plugin.clock(self)
@@ -294,7 +317,23 @@ class Xsi:
         return status
 
     def get_time(self):
+        """
+        Returns current time in xsim time resolution ticks
+        """
         return self._time
+
+    def get_time_ns(self):
+        """
+        Returns current time in nanoseconds
+        """
+        return (self._time) / (Xsi.get_xsi_tick_freq_hz() * 1e9)
+
+    def get_time_us(self):
+        """
+        Returns current time in microseconds
+        """
+        return (self._time) / (Xsi.get_xsi_tick_freq_hz() * 1e6)
+
 
     def run(self):
         status = XsiStatus.OK

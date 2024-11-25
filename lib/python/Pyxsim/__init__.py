@@ -16,6 +16,7 @@ from pathlib import Path
 from Pyxsim.xmostest_subprocess import call_get_output
 from . import pyxsim
 from Pyxsim.xe import Xe
+from Pyxsim.pyxsim import Xsi
 
 
 # This function is called automatically by the runners
