@@ -326,13 +326,13 @@ class Xsi:
         """
         Returns current time in nanoseconds
         """
-        return (self._time) / (Xsi.get_xsi_tick_freq_hz() * 1e9)
+        return (self._time * 1e9) / (Xsi.get_xsi_tick_freq_hz())
 
     def get_time_us(self):
         """
         Returns current time in microseconds
         """
-        return (self._time) / (Xsi.get_xsi_tick_freq_hz() * 1e6)
+        return (self._time * 1e6) / (Xsi.get_xsi_tick_freq_hz())
 
 
     def run(self):
