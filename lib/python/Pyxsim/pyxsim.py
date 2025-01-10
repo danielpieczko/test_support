@@ -10,6 +10,7 @@ from ctypes import (
     create_string_buffer,
 )
 import os
+from pathlib import Path
 import re
 import struct
 import sys
@@ -22,19 +23,23 @@ from Pyxsim.xmostest_subprocess import platform_is_windows
 
 ALL_BITS = 0xFFFFFFFF
 
-xcc_exec_prefix = os.environ["XCC_EXEC_PREFIX"]
-xcc_exec_prefix += "/" if not xcc_exec_prefix.endswith("/") else ""
+
+# pyxsim can be used with a custom build of the xsidevice library, while
+# still using the rest of XTC Tools (eg. for building) from whichever
+# installation has been loaded with SetEnv. To do this, set the
+# PYXSIM_XSIDEVICE_LIB environment variable to be a path to the directory
+# containing the custom xsidevice library.
+try:
+    xcc_exec_prefix = Path(os.environ["PYXSIM_XSIDEVICE_LIB"]).resolve()
+except KeyError:
+    xcc_exec_prefix = Path(os.environ["XCC_EXEC_PREFIX"]).resolve().parent / "lib"
 
 if platform_is_windows():
-    xsi_lib_path = os.path.abspath(
-        xcc_exec_prefix + "../lib/xsidevice.dll"
-    )
+    xsi_lib_path = xcc_exec_prefix / "xsidevice.dll"
 else:
-    xsi_lib_path = os.path.abspath(
-        xcc_exec_prefix + "../lib/libxsidevice.so"
-    )
+    xsi_lib_path = xcc_exec_prefix / "libxsidevice.so"
 
-xsi_lib = cdll.LoadLibrary(xsi_lib_path)
+xsi_lib = cdll.LoadLibrary(str(xsi_lib_path))
 
 
 def xsi_is_valid_port(port):
